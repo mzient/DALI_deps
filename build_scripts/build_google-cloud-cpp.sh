@@ -23,8 +23,11 @@
 # storage client's tracing support.
 #
 # The googleapis protobuf definitions are not vendored here: google-cloud-cpp
-# downloads the pinned, checksummed tarball while configuring. Point
-# GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL at a local copy to build offline.
+# downloads the pinned, checksummed tarball while configuring - the only
+# dependency in this repo that reaches the network at build time, since
+# everything else is a pinned submodule. Point
+# GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL at a local copy (a file:// URL
+# works) to build offline; it is forwarded below when set in the environment.
 #
 # GOOGLE_CLOUD_CPP_WITH_MOCKS defaults to ON whenever BUILD_TESTING is OFF
 # (CMakeLists.txt's cmake_dependent_option), which is exactly this build's
@@ -47,6 +50,12 @@ declare -a EXTRA_CMAKE_ARGS
 if [[ -n ${CC_COMP:-} && ${CC_COMP} != gcc ]]; then
   EXTRA_CMAKE_ARGS+=(-DProtobuf_PROTOC_EXECUTABLE=${HOST_INSTALL_PREFIX}/bin/protoc)
   EXTRA_CMAKE_ARGS+=(-DGOOGLE_CLOUD_CPP_GRPC_PLUGIN_EXECUTABLE=${HOST_INSTALL_PREFIX}/bin/grpc_cpp_plugin)
+fi
+if [[ -n ${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL:-} ]]; then
+  EXTRA_CMAKE_ARGS+=(-DGOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL="${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL}")
+fi
+if [[ -n ${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH:-} ]]; then
+  EXTRA_CMAKE_ARGS+=(-DGOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH="${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH}")
 fi
 
 pushd "${ROOT_DIR}/third_party/google-cloud-cpp"
