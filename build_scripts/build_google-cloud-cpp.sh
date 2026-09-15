@@ -38,6 +38,16 @@
 # verified with a from-scratch build: the default flags fail configure with
 # "Could NOT find GTest" when googletest isn't installed, while adding this
 # flag configures, builds, and installs cleanly without it.
+#
+# Shared, unlike everything built above it. This mirrors the AWS SDK: aws-sdk-cpp keeps its own
+# CMake default of BUILD_SHARED_LIBS=ON and links its C runtime libraries statically, so DALI gets
+# libaws-cpp-sdk-{core,s3}.so over static libaws-c-*.a. The same reasoning applies here - libdali.so
+# and libdali_operators.so both use the GCS client, and a gcs::Client constructed by one and used
+# by the other has to be the same object, which it is only if there is a single copy of the
+# library in the process. Built statically instead, each of them ends up with a private copy, and
+# passing a client across that boundary crashes. gRPC, protobuf, abseil, opentelemetry, curl and
+# OpenSSL stay static and are linked into the three shared objects that come out of this:
+# libgoogle_cloud_cpp_{storage,rest_internal,common}.so, which is the whole runtime closure.
 export ROOT_DIR=$(realpath "${ROOT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")/..}")
 source "${ROOT_DIR}/build_scripts/validate_toolchain_env.sh"
 source "${ROOT_DIR}/build_scripts/generate_toolchain_file.sh"
@@ -67,7 +77,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=toolchain.cmake \
       -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
       -DCMAKE_CXX_STANDARD=17 \
       -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-      -DBUILD_SHARED_LIBS=OFF \
+      -DBUILD_SHARED_LIBS=ON \
       -DBUILD_TESTING=OFF \
       -DGOOGLE_CLOUD_CPP_WITH_MOCKS=OFF \
       -DGOOGLE_CLOUD_CPP_ENABLE=storage \
