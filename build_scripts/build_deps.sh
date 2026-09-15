@@ -68,8 +68,6 @@ PACKAGE_LIST=(
     "openssl"
     "curl"
     "nlohmann_json"
-    "googletest"
-    "benchmark"
     "opentelemetry-cpp"
     "grpc" # Install after protobuf, openssl and zlib
     "google-cloud-cpp" # Install last, it uses everything above

@@ -25,6 +25,16 @@
 # The googleapis protobuf definitions are not vendored here: google-cloud-cpp
 # downloads the pinned, checksummed tarball while configuring. Point
 # GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL at a local copy to build offline.
+#
+# GOOGLE_CLOUD_CPP_WITH_MOCKS defaults to ON whenever BUILD_TESTING is OFF
+# (CMakeLists.txt's cmake_dependent_option), which is exactly this build's
+# configuration, and pulls in GTest/GMock (CMakeLists.txt:255, guarded by
+# `if (BUILD_TESTING OR GOOGLE_CLOUD_CPP_WITH_MOCKS)`) purely to compile mocking
+# libraries nothing here links against. Turning it off drops googletest and
+# benchmark (GTest's build-time companion) from this dependency set entirely -
+# verified with a from-scratch build: the default flags fail configure with
+# "Could NOT find GTest" when googletest isn't installed, while adding this
+# flag configures, builds, and installs cleanly without it.
 export ROOT_DIR=$(realpath "${ROOT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")/..}")
 source "${ROOT_DIR}/build_scripts/validate_toolchain_env.sh"
 source "${ROOT_DIR}/build_scripts/generate_toolchain_file.sh"
@@ -50,6 +60,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=toolchain.cmake \
       -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
       -DBUILD_SHARED_LIBS=OFF \
       -DBUILD_TESTING=OFF \
+      -DGOOGLE_CLOUD_CPP_WITH_MOCKS=OFF \
       -DGOOGLE_CLOUD_CPP_ENABLE=storage \
       -DGOOGLE_CLOUD_CPP_ENABLE_EXAMPLES=OFF \
       -DOPENSSL_ROOT_DIR=${INSTALL_PREFIX} \
