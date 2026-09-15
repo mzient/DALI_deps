@@ -61,12 +61,12 @@ PACKAGE_LIST=(
     "libsndfile"
     "libtar"
     "cfitsio"
-    "aws-sdk-cpp"
-    # Google Cloud Storage. OpenSSL and libcurl are also built by
-    # build_aws-sdk-cpp.sh, but into a prefix private to the AWS SDK; these two
-    # entries put them where google-cloud-cpp - and later DALI - can find them.
+    # OpenSSL and curl are shared by aws-sdk-cpp and google-cloud-cpp; both are
+    # built once here, into the common prefix, rather than each building its
+    # own private copy.
     "openssl"
     "curl"
+    "aws-sdk-cpp"
     "nlohmann_json"
     "opentelemetry-cpp"
     "grpc" # Install after protobuf, openssl and zlib

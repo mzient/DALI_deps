@@ -16,6 +16,7 @@
 
 export ROOT_DIR=$(realpath "${ROOT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")/..}")
 source "${ROOT_DIR}/build_scripts/validate_toolchain_env.sh"
+: "${INSTALL_PREFIX:=${HOST_INSTALL_PREFIX:-/usr/local}}"
 
 for flag_var in CPPFLAGS LDFLAGS; do
   if [[ -n ${!flag_var:-} && ! ${!flag_var} =~ ^[a-zA-Z0-9/_.+=,\ -]+$ ]]; then
@@ -24,14 +25,8 @@ for flag_var in CPPFLAGS LDFLAGS; do
   fi
 done
 
-mkdir -p ${ROOT_DIR}/third_party/openssl/build
-mkdir -p ${ROOT_DIR}/third_party/curl/build
 mkdir -p ${ROOT_DIR}/third_party/aws-sdk-cpp/build
-mkdir -p ${ROOT_DIR}/third_party/aws-sdk-cpp/deps
-mkdir -p ${ROOT_DIR}/third_party/aws-sdk-cpp/openssldir
 
-export DEPS_PREFIX=${ROOT_DIR}/third_party/aws-sdk-cpp/deps
-export DEPS_OPENSSLDIR=${ROOT_DIR}/third_party/aws-sdk-cpp/openssldir
 export TOOLCHAIN_FILE=${ROOT_DIR}/third_party/aws-sdk-cpp/toolchain.cmake
 
 echo "set(CMAKE_SYSTEM_NAME Linux)" > ${TOOLCHAIN_FILE}
@@ -55,72 +50,27 @@ fi
 echo 'set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")' >> ${TOOLCHAIN_FILE}
 echo 'set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")' >> ${TOOLCHAIN_FILE}
 
-# Build and install static OpenSSL libs to a temporary dir
-pushd ${ROOT_DIR}/third_party/openssl
-CFLAGS="$CFLAGS -fPIC -Wa,--noexecstack"
-declare -a OPTS
-OPTS+=(no-shared)
-OPTS+=(no-tests)
-OPTS+=(--libdir=lib)
-OPTS+=(--prefix=${DEPS_PREFIX})
-OPTS+=(--openssldir=${DEPS_OPENSSLDIR})
-_CONFIGURATOR="./Configure"
-OPENSSL_TARGET_ARCH=${CMAKE_TARGET_ARCH:-$(uname -m)}
-case "$OPENSSL_TARGET_ARCH" in
-  x86_64)
-    OPTS+=(linux-x86_64)
-    ;;
-  aarch64)
-    OPTS+=(linux-aarch64)
-    ;;
-esac
-CC="${CC_COMP}" CXX="${CXX_COMP}" CPPFLAGS="${CPPFLAGS:-}" \
-  CFLAGS="${CFLAGS:-} -fPIC -Wa,--noexecstack" \
-  CXXFLAGS="${CXXFLAGS:-} -fPIC -Wa,--noexecstack" LDFLAGS="${LDFLAGS:-}" \
-  "${_CONFIGURATOR}" "${OPTS[@]}"
-make -j"$(grep ^processor /proc/cpuinfo | wc -l)"
-make install_sw install_ssldirs
-
-popd
-# OpenSSL done
-
-# Build and install static libcurl library to a temporary dir
-pushd ${ROOT_DIR}/third_party/curl/build
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DOPENSSL_INCLUDE_DIR="${DEPS_PREFIX}/include" \
-      -DOPENSSL_SSL_LIBRARY="${DEPS_PREFIX}/lib/libssl.a" \
-      -DOPENSSL_CRYPTO_LIBRARY="${DEPS_PREFIX}/lib/libcrypto.a" \
-      -DCURL_CA_PATH_AUTODETECT=ON \
-      -DCURL_CA_BUNDLE_AUTODETECT=ON \
-      -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
-      -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} \
-      -DBUILD_SHARED_LIBS=OFF \
-      -DBUILD_CURL_EXE=OFF \
-      -DBUILD_STATIC_LIBS=ON \
-      -DCURL_USE_LIBPSL=OFF \
-      ..
-make -j"$(grep ^processor /proc/cpuinfo | wc -l)"
-make install
-popd
-# libcurl done
-
-# Build AWS SDK libs, link statically with libcurl and OpenSSL
+# Build AWS SDK libs, link statically with libcurl and OpenSSL. Both are built
+# once, ahead of this script, by build_openssl.sh/build_curl.sh into the shared
+# INSTALL_PREFIX - this used to build its own private copies of both, which
+# just duplicated that work (and, for OpenSSL, reconfigured the same in-place
+# source tree a second time).
 pushd ${ROOT_DIR}/third_party/aws-sdk-cpp/build
 cmake -DCMAKE_BUILD_TYPE=Release \
       -DLEGACY_MODE=OFF \
       -DCMAKE_DISABLE_FIND_PACKAGE_s2n=ON \
-      -DCMAKE_SYSTEM_INCLUDE_PATH="${DEPS_PREFIX}/include" \
-      -DCMAKE_SYSTEM_PREFIX_PATH="${DEPS_PREFIX}" \
-      -DCURL_INCLUDE_DIR="${DEPS_PREFIX}/include" \
-      -DCURL_LIBRARY_RELEASE="${DEPS_PREFIX}/lib/libcurl.a" \
-      -DCURL_LIBRARIES="${DEPS_PREFIX}/lib/libcurl.a" \
-      -Dcrypto_INCLUDE_DIR="${DEPS_PREFIX}/include" \
-      -Dcrypto_SHARED_LIBRARY="${DEPS_PREFIX}/lib/libcrypto.a" \
-      -Dcrypto_STATIC_LIBRARY="${DEPS_PREFIX}/lib/libcrypto.a" \
-      -DOPENSSL_INCLUDE_DIR="${DEPS_PREFIX}/include" \
-      -DOPENSSL_SSL_LIBRARY="${DEPS_PREFIX}/lib/libssl.a" \
-      -DOPENSSL_CRYPTO_LIBRARY="${DEPS_PREFIX}/lib/libcrypto.a" \
-      -DOPENSSL_LIBRARIES="${DEPS_PREFIX}/lib/libssl.a;${DEPS_PREFIX}/lib/libcrypto.a" \
+      -DCMAKE_SYSTEM_INCLUDE_PATH="${INSTALL_PREFIX}/include" \
+      -DCMAKE_SYSTEM_PREFIX_PATH="${INSTALL_PREFIX}" \
+      -DCURL_INCLUDE_DIR="${INSTALL_PREFIX}/include" \
+      -DCURL_LIBRARY_RELEASE="${INSTALL_PREFIX}/lib/libcurl.a" \
+      -DCURL_LIBRARIES="${INSTALL_PREFIX}/lib/libcurl.a" \
+      -Dcrypto_INCLUDE_DIR="${INSTALL_PREFIX}/include" \
+      -Dcrypto_SHARED_LIBRARY="${INSTALL_PREFIX}/lib/libcrypto.a" \
+      -Dcrypto_STATIC_LIBRARY="${INSTALL_PREFIX}/lib/libcrypto.a" \
+      -DOPENSSL_INCLUDE_DIR="${INSTALL_PREFIX}/include" \
+      -DOPENSSL_SSL_LIBRARY="${INSTALL_PREFIX}/lib/libssl.a" \
+      -DOPENSSL_CRYPTO_LIBRARY="${INSTALL_PREFIX}/lib/libcrypto.a" \
+      -DOPENSSL_LIBRARIES="${INSTALL_PREFIX}/lib/libssl.a;${INSTALL_PREFIX}/lib/libcrypto.a" \
       -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
       -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
       -DBUILD_ONLY='s3;core' \
