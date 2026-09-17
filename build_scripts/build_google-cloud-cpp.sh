@@ -18,9 +18,10 @@
 # `storage` is the single entry in GOOGLE_CLOUD_CPP_ENABLE - the ~200 other GA
 # libraries are left out. google_cloud_cpp_enable_deps() then adds monitoring,
 # trace, opentelemetry and universe_domain on top of whatever was asked for, which
-# is where the gRPC and opentelemetry-cpp dependencies come from. They can be
-# turned off by listing them as `-monitoring` and so on, at the cost of the
-# storage client's tracing support.
+# is where the gRPC and opentelemetry-cpp dependencies come from. There is no
+# storage-only-without-gRPC configuration: dropping monitoring/trace/opentelemetry
+# still leaves an unconditional #include of an opentelemetry header in
+# google_cloud_cpp_common, so the build fails rather than losing tracing support.
 #
 # The googleapis protobuf definitions are not vendored here: google-cloud-cpp
 # downloads the pinned, checksummed tarball while configuring - the only
