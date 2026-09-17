@@ -75,6 +75,11 @@ if [[ -n ${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH:-} ]]; then
   EXTRA_CMAKE_ARGS+=(-DGOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH="${GOOGLE_CLOUD_CPP_OVERRIDE_GOOGLEAPIS_URL_HASH}")
 fi
 
+# CMAKE_INSTALL_LIBDIR=lib is forced explicitly: unlike every other dependency here,
+# google-cloud-cpp's own CMakeLists.txt applies GNUInstallDirs' lib64 default on this
+# manylinux (RHEL-derived) image, installing outside the lib/ path DALI's bundle-wheel.sh
+# looks in - it silently skips libgoogle_cloud_cpp_{storage,rest_internal,common}.so and
+# they never make it into the wheel.
 pushd "${ROOT_DIR}/third_party/google-cloud-cpp"
 mkdir -p build
 cd build
@@ -91,6 +96,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=toolchain.cmake \
       -DGOOGLE_CLOUD_CPP_ENABLE_EXAMPLES=OFF \
       -DOPENSSL_ROOT_DIR=${INSTALL_PREFIX} \
       -DOPENSSL_USE_STATIC_LIBS=ON \
+      -DCMAKE_INSTALL_LIBDIR=lib \
       "${EXTRA_CMAKE_ARGS[@]}" \
       ..
 make -j"$(nproc)"
