@@ -45,8 +45,13 @@ done
 
 # Cross compilation only: the target grpc_cpp_plugin cannot run on the host, so
 # build a host one first. gRPC picks it up with find_program(), and protoc comes
-# from the host stage of build_protobuf.sh the same way.
-if [[ -n ${CC_COMP:-} && ${CC_COMP} != gcc ]]; then
+# from the host stage of build_protobuf.sh the same way. See generate_toolchain_file.sh
+# for why this compares basename + target architecture rather than the raw CC_COMP string.
+CC_COMP_BASENAME=$(basename "${CC_COMP:-}")
+CC_COMP_TARGET_ARCH=$("${CC_COMP:-}" -dumpmachine 2>/dev/null | cut -d- -f1)
+if [[ -n ${CC_COMP:-} ]] && \
+   { [[ ${CC_COMP_BASENAME} != gcc ]] || \
+     [[ -n ${CC_COMP_TARGET_ARCH} && ${CC_COMP_TARGET_ARCH} != "$(uname -m)" ]]; }; then
   mkdir -p build-host
   pushd build-host
   cmake -DCMAKE_BUILD_TYPE=Release \

@@ -57,8 +57,14 @@ source "${ROOT_DIR}/build_scripts/generate_toolchain_file.sh"
 
 declare -a EXTRA_CMAKE_ARGS
 # Cross compilation only: protoc and grpc_cpp_plugin have to be the host builds,
-# the ones installed next to the target libraries cannot be executed here.
-if [[ -n ${CC_COMP:-} && ${CC_COMP} != gcc ]]; then
+# the ones installed next to the target libraries cannot be executed here. See
+# generate_toolchain_file.sh for why this compares basename + target architecture
+# rather than the raw CC_COMP string.
+CC_COMP_BASENAME=$(basename "${CC_COMP:-}")
+CC_COMP_TARGET_ARCH=$("${CC_COMP:-}" -dumpmachine 2>/dev/null | cut -d- -f1)
+if [[ -n ${CC_COMP:-} ]] && \
+   { [[ ${CC_COMP_BASENAME} != gcc ]] || \
+     [[ -n ${CC_COMP_TARGET_ARCH} && ${CC_COMP_TARGET_ARCH} != "$(uname -m)" ]]; }; then
   EXTRA_CMAKE_ARGS+=(-DProtobuf_PROTOC_EXECUTABLE=${HOST_INSTALL_PREFIX}/bin/protoc)
   EXTRA_CMAKE_ARGS+=(-DGOOGLE_CLOUD_CPP_GRPC_PLUGIN_EXECUTABLE=${HOST_INSTALL_PREFIX}/bin/grpc_cpp_plugin)
 fi

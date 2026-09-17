@@ -41,7 +41,18 @@ generate_toolchain_file() {
     echo "set(CMAKE_CXX_COMPILER ${CXX_COMP})" >> "${toolchain_file}"
   fi
   # only when cross compiling
-  if [[ -n ${CC_COMP:-} && ${CC_COMP} != gcc ]]; then
+  # A full-path native compiler (e.g. /usr/bin/gcc) must not be treated as
+  # a cross compiler (the original bug): compare basenames. A cross
+  # toolchain can also be exposed under a plain "gcc" name (e.g.
+  # /opt/cross/bin/gcc), so additionally compare the compiler's target
+  # architecture against the build host; when the compiler cannot be
+  # queried, the basename check alone decides. Mirrors build_protobuf.sh.
+  local cc_basename cc_target_arch
+  cc_basename=$(basename "${CC_COMP:-}")
+  cc_target_arch=$("${CC_COMP:-}" -dumpmachine 2>/dev/null | cut -d- -f1)
+  if [[ -n ${CC_COMP:-} ]] && \
+     { [[ ${cc_basename} != gcc ]] || \
+       [[ -n ${cc_target_arch} && ${cc_target_arch} != "$(uname -m)" ]]; }; then
     echo "set(CMAKE_SYSTEM_NAME Linux)" >> "${toolchain_file}"
     if [[ -n ${CMAKE_TARGET_ARCH:-} ]]; then
       echo "set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_TARGET_ARCH})" >> "${toolchain_file}"
