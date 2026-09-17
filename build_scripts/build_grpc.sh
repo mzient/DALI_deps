@@ -34,9 +34,12 @@ JOBS=$(nproc)
 pushd "${ROOT_DIR}/third_party/grpc"
 
 # c-ares and re2 live in gRPC's own submodules and, unlike gRPC's proto
-# dependencies, have no download fallback in its CMake files. The recursive
-# clone described in README.rst brings them in; fetch them here as well so that
-# a checkout that only went one level deep still builds.
+# dependencies, have no download fallback in its CMake files. Both the recursive
+# clone in README.rst and docker/Dockerfile.deps (NVIDIA/DALI) already bring
+# these in, so on the two documented checkout paths this loop never does
+# anything - it is deliberately kept anyway as cheap insurance (these two
+# submodules are tiny, unlike google-cloud-cpp) against a checkout that used a
+# plain, non-recursive `git submodule update --init`.
 for GRPC_SUBMODULE in third_party/cares/cares third_party/re2; do
   if [[ -z $(ls -A "${GRPC_SUBMODULE}" 2>/dev/null) ]]; then
     git submodule update --init --depth 1 "${GRPC_SUBMODULE}"
