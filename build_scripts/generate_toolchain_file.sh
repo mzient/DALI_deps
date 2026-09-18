@@ -41,12 +41,13 @@ generate_toolchain_file() {
     echo "set(CMAKE_CXX_COMPILER ${CXX_COMP})" >> "${toolchain_file}"
   fi
   # only when cross compiling
-  # A full-path native compiler (e.g. /usr/bin/gcc) must not be treated as
-  # a cross compiler (the original bug): compare basenames. A cross
-  # toolchain can also be exposed under a plain "gcc" name (e.g.
-  # /opt/cross/bin/gcc), so additionally compare the compiler's target
-  # architecture against the build host; when the compiler cannot be
-  # queried, the basename check alone decides. Mirrors build_protobuf.sh.
+  # Comparing CC_COMP directly against the literal "gcc" would misclassify a
+  # native build that passes a full path (e.g. /usr/bin/gcc) as cross
+  # compiling; compare basenames instead. A cross toolchain can also be
+  # exposed under a plain "gcc" name (e.g. /opt/cross/bin/gcc), so
+  # additionally compare the compiler's target architecture against the
+  # build host; when the compiler cannot be queried, the basename check
+  # alone decides. Mirrors build_protobuf.sh.
   local cc_basename cc_target_arch
   cc_basename=$(basename "${CC_COMP:-}")
   cc_target_arch=$("${CC_COMP:-}" -dumpmachine 2>/dev/null | cut -d- -f1)

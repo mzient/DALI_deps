@@ -47,7 +47,13 @@ bash -ex build_scripts/build_ffmpeg.sh
 # etc.
 ```
 
-## Google Cloud Storage
+## Dependency-specific build notes
+
+Notes here cover build decisions that aren't obvious from the script alone. Most
+dependencies don't need an entry; add one when a build script relies on a
+non-obvious workaround or constraint future changes need to preserve.
+
+### Google Cloud Storage
 
 `build_google-cloud-cpp.sh` passes `-DGOOGLE_CLOUD_CPP_ENABLE=storage`, so only the
 GCS client is built out of the ~200 libraries in the SDK. google-cloud-cpp always adds
